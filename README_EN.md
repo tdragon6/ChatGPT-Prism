@@ -1,6 +1,6 @@
 # ChatGPT Prism
 
-![](assets/banner.svg)
+[](assets/banner.svg)
 
 <h4 align="center">
     ChatGPT Prism lets you configure startup animations for the ChatGPT/Codex desktop clients, supporting Windows and Darwin. While running in the background, it continuously hooks into the startup windows of newly launched client processes during cold starts. It supports switching between animations in the library, customizing parameters, importing local creations, and accessing the community marketplace
@@ -13,7 +13,7 @@
 
 ## Demo Video
 
-![](assets/video.mp4)
+<video controls src="assets/video.mp4"></video>
 
 ## Quick Installation
 

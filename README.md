@@ -13,7 +13,7 @@
 
 ## 演示视频
 
-![](assets/video.mp4)
+<video controls src="assets/video.mp4"></video>
 
 ## 快速安装
 
