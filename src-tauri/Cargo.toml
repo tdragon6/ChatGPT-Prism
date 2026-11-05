@@ -1,0 +1,40 @@
+[package]
+name = "chatgpt-prism"
+version = "0.1.0"
+edition = "2024"
+description = "Startup animations for ChatGPT"
+license = "MIT"
+
+[features]
+custom-protocol = ["tauri/custom-protocol"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+base64 = "0.22"
+regex = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+semver = "1"
+sha2 = "0.10"
+ureq = { version = "3", default-features = false, features = ["native-tls"] }
+url = "2"
+tauri = { version = "2", features = ["image-png", "tray-icon"] }
+tauri-plugin-autostart = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-single-instance = "2"
+tempfile = "3"
+toml = "0.9"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-app-kit = { version = "0.3", default-features = false, features = ["NSAppearance", "NSApplication", "NSResponder", "NSWindow", "NSGraphics", "NSStatusItem", "NSStatusBarButton", "NSButton", "NSImage"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["NSAppleEventDescriptor", "NSAppleEventManager"] }
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true

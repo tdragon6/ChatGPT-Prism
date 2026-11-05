@@ -1,0 +1,297 @@
+{
+  "schemaVersion": 1,
+  "items": [
+    {
+      "manifest": {
+        "apiVersion": 1,
+        "id": "terminal-prelude",
+        "default": true,
+        "type": "startup",
+        "name": "终端序章",
+        "author": "tdragon6",
+        "version": "0.1.1",
+        "description": "身份自定义、横向认证进度、电子音乐与英文系统播报",
+        "themes": [
+          "dark",
+          "light"
+        ],
+        "languages": [
+          "zh",
+          "en"
+        ],
+        "entry": "source/zh/index.html",
+        "preview": "cover.png",
+        "parameters": [
+          {
+            "key": "speed",
+            "label": "速度",
+            "type": "number",
+            "default": 1,
+            "min": 0.75,
+            "max": 2,
+            "step": 0.25
+          },
+          {
+            "key": "identity",
+            "label": "身份名称",
+            "type": "text",
+            "default": "tdragon6",
+            "maxLength": 32,
+            "pattern": "identity"
+          },
+          {
+            "key": "sound",
+            "label": "音乐",
+            "type": "boolean",
+            "default": true
+          },
+          {
+            "key": "volume",
+            "label": "音量",
+            "type": "number",
+            "default": 0.5,
+            "min": 0,
+            "max": 1,
+            "step": 0.05
+          }
+        ],
+        "license": "MIT",
+        "i18n": {
+          "en": {
+            "name": "Terminal Prelude",
+            "description": "A custom identity, animated checks, electronic music, and English system announcements",
+            "parameters": {
+              "speed": {
+                "label": "Speed"
+              },
+              "identity": {
+                "label": "Identity name"
+              },
+              "sound": {
+                "label": "Music"
+              },
+              "volume": {
+                "label": "Volume"
+              }
+            }
+          }
+        },
+        "locales": {
+          "zh": "source/zh/index.html",
+          "en": "source/en/index.html"
+        }
+      },
+      "sourceUrl": "https://raw.githubusercontent.com/tdragon6/ChatGPT-Prism/main/startup/terminal-prelude/",
+      "files": [
+        {
+          "path": "cover.png",
+          "size": 549702,
+          "sha256": "739394a0403dc89de27fa60d7c8d62af10c70b3dc804f5fa15fd9688de6718cd"
+        },
+        {
+          "path": "LICENSE",
+          "size": 1065,
+          "sha256": "724da7fe1b9e81c55a46dba617fe02788d0f769f401865acf5ac8c827bb53e22"
+        },
+        {
+          "path": "meta.json",
+          "size": 1549,
+          "sha256": "abd01c4ba9daece891741089837d55ca961ab77b9b44f6f34d67f1c31f2b1020"
+        },
+        {
+          "path": "source/animation.js",
+          "size": 26142,
+          "sha256": "a17973ae1359348aa00bcf5ca5b951119c55721fbec631932254015610465080"
+        },
+        {
+          "path": "source/audio.js",
+          "size": 18204,
+          "sha256": "0a8d917376767a5331fe3473cb6c8ae3a9c60a66e8308d784e0c787b0af884dd"
+        },
+        {
+          "path": "source/en/index.html",
+          "size": 12455,
+          "sha256": "3b4175a98c076f8e4511104f84f5adcb1bd9420f7008a366bc3e02a3ad1cadb1"
+        },
+        {
+          "path": "source/en/style.css",
+          "size": 2236,
+          "sha256": "e0683c885ec9385c34cb01aecc655071058fc4fa81d822a44ad2d10fbf97ea71"
+        },
+        {
+          "path": "source/style.css",
+          "size": 39224,
+          "sha256": "4d0fab3fa9870e8d28b8bb6ba69a034bec931ef65ef8355ce57fb3e0525c267b"
+        },
+        {
+          "path": "source/voice.js",
+          "size": 2703,
+          "sha256": "0153e43d64329d7c7b4e73e7de3e4ed38eb8991bf2cea3338940147088056b86"
+        },
+        {
+          "path": "source/voice/granted.wav",
+          "size": 49200,
+          "sha256": "7d4e326701448d495c0563dd18ee77649a93360d1c3f14144f0221ab21466eef"
+        },
+        {
+          "path": "source/voice/identity.wav",
+          "size": 69656,
+          "sha256": "9b3f49e2d89664d0774d16ab232092e352809a499d8d3b0faebe53b43737db05"
+        },
+        {
+          "path": "source/voice/initialize.wav",
+          "size": 94268,
+          "sha256": "fd64f00051a75bbfcf7ad8ac3ccef422f9904101a2942d6df6f4f780ccff79b9"
+        },
+        {
+          "path": "source/voice/online.wav",
+          "size": 53660,
+          "sha256": "2029c4a1d135f4c2bcbe1519ea362469ca0df41dddd1aa186c47320fb487c6e7"
+        },
+        {
+          "path": "source/voice/permission.wav",
+          "size": 76856,
+          "sha256": "e5be3176f7fa2d00b4adb996bacf8fd67dba9f2db23dd5a90bfc8633eba13170"
+        },
+        {
+          "path": "source/voice/verified.wav",
+          "size": 59200,
+          "sha256": "5e9f14e863056717f39d93c06c09c087bc3492cfbac1f11898f5d6cd8716dfe8"
+        },
+        {
+          "path": "source/zh/index.html",
+          "size": 12402,
+          "sha256": "f1364290e3765fb0460d9cf41a06019bc57c4a330a9e33ceb6aef46e7b8b422c"
+        },
+        {
+          "path": "THIRD-PARTY-LICENSES/dsh-startup-screen-LICENSE",
+          "size": 1066,
+          "sha256": "9bbdfb8e1b847a8a9f614b95110fff653733ecd1fe86d04ac8836788f71ec736"
+        },
+        {
+          "path": "THIRD-PARTY-NOTICES.md",
+          "size": 1160,
+          "sha256": "667017ef0d03209a5740a3b02f77d8e1963cae7c810a96c508aa64ed00ad20cb"
+        }
+      ],
+      "sha256": "3a5788cad8f18a0c01535f99795c2c6cde433f28a678792aec5c31998ee5b43b",
+      "size": 1070748
+    },
+    {
+      "manifest": {
+        "apiVersion": 1,
+        "id": "key-protocol",
+        "type": "startup",
+        "name": "密钥协议",
+        "author": "tdragon6",
+        "version": "0.1.1",
+        "description": "加密载波捕获、六段密钥解密与安全通道解锁",
+        "themes": [
+          "dark",
+          "light"
+        ],
+        "languages": [
+          "zh",
+          "en"
+        ],
+        "entry": "source/index.html",
+        "preview": "cover.png",
+        "parameters": [
+          {
+            "key": "speed",
+            "label": "速度",
+            "type": "number",
+            "default": 1,
+            "min": 0.5,
+            "max": 2,
+            "step": 0.25
+          },
+          {
+            "key": "identity",
+            "label": "身份名称",
+            "type": "text",
+            "default": "tdragon6",
+            "maxLength": 32,
+            "pattern": "identity"
+          },
+          {
+            "key": "sound",
+            "label": "音乐",
+            "type": "boolean",
+            "default": true
+          },
+          {
+            "key": "volume",
+            "label": "音量",
+            "type": "number",
+            "default": 0.5,
+            "min": 0,
+            "max": 1,
+            "step": 0.05
+          }
+        ],
+        "license": "MIT",
+        "i18n": {
+          "en": {
+            "name": "Key Protocol",
+            "description": "Intercept an encrypted carrier, recover six key fragments, and unlock a secure channel",
+            "parameters": {
+              "speed": {
+                "label": "Speed"
+              },
+              "identity": {
+                "label": "Identity name"
+              },
+              "sound": {
+                "label": "Music"
+              },
+              "volume": {
+                "label": "Volume"
+              }
+            }
+          }
+        }
+      },
+      "sourceUrl": "https://raw.githubusercontent.com/tdragon6/ChatGPT-Prism/main/startup/key-protocol/",
+      "files": [
+        {
+          "path": "cover.png",
+          "size": 174681,
+          "sha256": "74cd46aaf1f6f5f7481036644d117b553d346ad4aa72dd9b00b1d5cd44bbbaa4"
+        },
+        {
+          "path": "LICENSE",
+          "size": 1065,
+          "sha256": "724da7fe1b9e81c55a46dba617fe02788d0f769f401865acf5ac8c827bb53e22"
+        },
+        {
+          "path": "meta.json",
+          "size": 1347,
+          "sha256": "86b0fc8da30f6e33591ce8ffb2b31ccda827338acd03083abec1910e12424005"
+        },
+        {
+          "path": "source/animation.js",
+          "size": 8846,
+          "sha256": "561b16a460fbfe22c95dded2bd9bb1fd9baa5ea41d6b1444482728fd66af36e4"
+        },
+        {
+          "path": "source/beacon.wav",
+          "size": 321092,
+          "sha256": "af5022c4bfc37f8c845f16e2a7696ba76a56f523d36c9aed9b55f64c350fccbb"
+        },
+        {
+          "path": "source/index.html",
+          "size": 5311,
+          "sha256": "2d08a8cbf9f5db7f2ca2d47352d9276f29274711d5291534f487eae8c9123d17"
+        },
+        {
+          "path": "source/style.css",
+          "size": 8823,
+          "sha256": "8bc2d6d8f511122ee9050e6855e4b4b5972c724f1918f320be761178da8a3e54"
+        }
+      ],
+      "sha256": "014aff140f3270f66d9673368c23968645f4c2273df15071c6a82cb7ae968ede",
+      "size": 521165
+    }
+  ]
+}

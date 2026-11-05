@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="zh">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>密钥协议</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <div class="field-grid" aria-hidden="true"></div>
+    <header class="masthead" aria-label="ChatGPT Prism">
+      <span class="mark" aria-hidden="true"></span>
+      <span>CHATGPT PRISM</span>
+      <span class="masthead-divider" aria-hidden="true"></span>
+      <span class="masthead-caption">SECURE SESSION</span>
+    </header>
+    <nav id="controls" class="controls" aria-label="动画控制">
+      <button id="sound" type="button" aria-pressed="true" aria-label="关闭音乐">AUDIO ON</button>
+      <button id="skip" type="button" aria-label="跳过启动动画">SKIP <span aria-hidden="true">▸</span></button>
+    </nav>
+
+    <main class="terminal">
+      <section class="dossier" aria-labelledby="title">
+        <div class="classification">
+          <span class="classification-mark" aria-hidden="true"></span>
+          <span>ACCESS PROTOCOL</span>
+          <span class="case-id">/ K-06</span>
+        </div>
+        <div class="headline">
+          <div class="stage-code"><span id="stage-number">01</span><span>/ 04</span></div>
+          <h1 id="title">捕获密钥</h1>
+          <p id="secondary" class="secondary">ACQUIRING FIELD KEY</p>
+        </div>
+        <div class="key-panel">
+          <div class="key-header">
+            <span id="key-label">密钥分段</span>
+            <span id="key-count">00 / 06</span>
+          </div>
+          <div id="segments" class="segments" aria-hidden="true">
+            <span>– –</span><span>– –</span><span>– –</span>
+            <span>– –</span><span>– –</span><span>– –</span>
+          </div>
+        </div>
+        <dl class="operator">
+          <div><dt id="operator-label">操作员</dt><dd id="identity">tdragon6</dd></div>
+          <div><dt id="session-label">会话</dt><dd>PRISM–0704</dd></div>
+        </dl>
+      </section>
+
+      <section class="instrument" aria-label="Lock core">
+        <div class="instrument-header"><span>LOCK CORE</span><span>RX / 04</span></div>
+        <svg class="diagram" viewBox="0 0 400 360" aria-hidden="true">
+          <defs>
+            <radialGradient id="field">
+              <stop stop-color="var(--accent)" stop-opacity=".20"></stop>
+              <stop offset=".63" stop-color="var(--accent)" stop-opacity=".06"></stop>
+              <stop offset="1" stop-color="var(--accent)" stop-opacity="0"></stop>
+            </radialGradient>
+            <pattern id="matrix" width="22" height="22" patternUnits="userSpaceOnUse">
+              <path d="M22 0H0v22" class="matrix-line"></path>
+            </pattern>
+          </defs>
+          <rect x="34" y="19" width="332" height="322" fill="url(#matrix)" opacity=".64"></rect>
+          <path class="brackets" d="M36 55V28h27m274 0h27v27M36 305v27h27m274 0h27v-27"></path>
+          <path class="axes" d="M37 180h326M200 28v304"></path>
+          <circle class="field" cx="200" cy="180" r="151" fill="url(#field)"></circle>
+          <circle class="guide" cx="200" cy="180" r="133"></circle>
+          <circle class="tick-ring" cx="200" cy="180" r="120"></circle>
+          <circle class="guide" cx="200" cy="180" r="99"></circle>
+          <g class="rotor">
+            <path class="sweep" d="M200 61A119 119 0 0 1 319 180M200 299A119 119 0 0 1 81 180"></path>
+            <path class="gates" d="M200 47v26m0 214v26M67 180h26m214 0h26"></path>
+            <circle class="pin" cx="200" cy="61" r="3.5"></circle>
+            <circle class="pin" cx="200" cy="299" r="3.5"></circle>
+          </g>
+          <g class="inner-rotor">
+            <path class="inner-arcs" d="M130 180a70 70 0 0 1 70-70m70 70a70 70 0 0 1-70 70"></path>
+            <path class="gates" d="m151 131-10-10m108 108 10 10"></path>
+          </g>
+          <path class="core-plate" d="m200 112 68 68-68 68-68-68Z"></path>
+          <path class="core-guide" d="m200 124 56 56-56 56-56-56Z"></path>
+          <path class="shackle" d="M182 174v-12a18 18 0 0 1 36 0v12"></path>
+          <rect class="lock-body" x="174" y="173" width="52" height="37" rx="3"></rect>
+          <path class="keyhole" d="M200 184a4.5 4.5 0 0 0-2 8.5l-1 8h6l-1-8a4.5 4.5 0 0 0-2-8.5Z"></path>
+          <path class="crosses" d="M66 92v10m-5-5h10m260 156v10m-5-5h10M77 248h13m224-135h13"></path>
+        </svg>
+        <div class="instrument-footer" aria-hidden="true">
+          <svg viewBox="0 0 148 16"><path class="signal" d="M0 8h22l3-2 4 6 3-11 4 14 5-7h22l4-3 4 7 4-7 3 3h22l3-6 4 11 4-8 4 3h32"></path></svg>
+          <span id="instrument-code">SYNC 01</span>
+        </div>
+      </section>
+    </main>
+
+    <footer class="readout">
+      <div class="state">
+        <span class="state-dot" aria-hidden="true"></span>
+        <span id="status" role="status">截获加密载波</span>
+      </div>
+      <div class="progress" aria-hidden="true"><div id="progress"></div></div>
+      <span id="counter" class="counter" aria-hidden="true">00%</span>
+      <span id="channel">CH / 07</span>
+    </footer>
+
+    <audio id="chime" src="beacon.wav" preload="auto"></audio>
+    <script src="animation.js"></script>
+  </body>
+</html>

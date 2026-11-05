@@ -1,0 +1,73 @@
+{
+  "apiVersion": 1,
+  "id": "terminal-prelude",
+  "default": true,
+  "type": "startup",
+  "name": "终端序章",
+  "author": "tdragon6",
+  "version": "0.1.1",
+  "description": "身份自定义、横向认证进度、电子音乐与英文系统播报",
+  "themes": ["dark", "light"],
+  "languages": ["zh", "en"],
+  "entry": "source/zh/index.html",
+  "preview": "cover.png",
+  "parameters": [
+    {
+      "key": "speed",
+      "label": "速度",
+      "type": "number",
+      "default": 1,
+      "min": 0.75,
+      "max": 2,
+      "step": 0.25
+    },
+    {
+      "key": "identity",
+      "label": "身份名称",
+      "type": "text",
+      "default": "tdragon6",
+      "maxLength": 32,
+      "pattern": "identity"
+    },
+    {
+      "key": "sound",
+      "label": "音乐",
+      "type": "boolean",
+      "default": true
+    },
+    {
+      "key": "volume",
+      "label": "音量",
+      "type": "number",
+      "default": 0.5,
+      "min": 0,
+      "max": 1,
+      "step": 0.05
+    }
+  ],
+  "license": "MIT",
+  "i18n": {
+    "en": {
+      "name": "Terminal Prelude",
+      "description": "A custom identity, animated checks, electronic music, and English system announcements",
+      "parameters": {
+        "speed": {
+          "label": "Speed"
+        },
+        "identity": {
+          "label": "Identity name"
+        },
+        "sound": {
+          "label": "Music"
+        },
+        "volume": {
+          "label": "Volume"
+        }
+      }
+    }
+  },
+  "locales": {
+    "zh": "source/zh/index.html",
+    "en": "source/en/index.html"
+  }
+}

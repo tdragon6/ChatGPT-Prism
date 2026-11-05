@@ -1,0 +1,42 @@
+/* English typography: the same composition, with spacing fitted to Latin text. */
+:root { --zh:"Segoe UI","Helvetica Neue",Arial,sans-serif; }
+h1 { font-family:var(--display); font-size:clamp(25px,3vw,42px); line-height:1.3; letter-spacing:.075em; text-indent:.075em; }
+.title-glyph { white-space:pre; }
+#stage-subtitle { font-size:9px; letter-spacing:2.5px; }
+.intro-zh { font:500 13px var(--display); letter-spacing:.28em; text-indent:.28em; }
+.continue-button { font-family:var(--display); font-size:12px; letter-spacing:1.1px; }
+.continue-button span { font-size:8px; letter-spacing:1.5px; }
+.interaction-hint { letter-spacing:.5px; }
+.startup[data-step="2"] .identity-card { width:min(320px,100%); }
+.identity-card dt { font-family:var(--mono); font-size:9px; letter-spacing:.5px; }
+.identity-card dd { max-width:175px; }
+.identity-tag { letter-spacing:1.3px!important; }
+#gate-status { font-family:var(--mono); font-size:10px; letter-spacing:.45px; }
+.gate-checks b { font-family:var(--mono); font-size:8px; letter-spacing:1px; }
+.status-log { font-size:11px; letter-spacing:.45px; }
+#status-en { font-size:7px; letter-spacing:1.4px; }
+.welcome>p { font-family:var(--mono); letter-spacing:1.7px; }
+.preview-end h2 { letter-spacing:1px; }
+@media(max-width:900px) {
+  h1 { font-size:clamp(23px,3.2vw,30px); letter-spacing:.06em; }
+  #stage-subtitle { font-size:8px; letter-spacing:1.7px; }
+  .status-log { font-size:10px; }
+  #status-en { font-size:6px; letter-spacing:1px; }
+}
+@media(max-width:650px) {
+  h1 { font-size:clamp(19px,4.6vw,27px); letter-spacing:.045em; }
+  #stage-subtitle { font-size:7px; letter-spacing:1px; }
+  .gate-readout { gap:8px; }
+  #gate-title { letter-spacing:1.2px; }
+  #gate-status { font-size:8px; letter-spacing:.1px; }
+  .gate-checks { gap:5px; }
+  .gate-checks b { font-size:7px; letter-spacing:.3px; }
+  .interaction-hint { font-size:8px; letter-spacing:.1px; }
+}
+@media(max-height:560px) {
+  .startup[data-step="1"] h1,.startup[data-step="2"] h1 { font-size:25px; line-height:1.25; letter-spacing:.065em; }
+  .identity-card dt,.identity-card dd { font-size:9px; line-height:1.35; }
+  #gate-status { font-size:9px; }
+  .continue-button { font-size:11px; }
+  .interaction-hint { font-size:8px; }
+}

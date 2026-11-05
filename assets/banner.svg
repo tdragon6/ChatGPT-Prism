@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 400" role="img" aria-labelledby="title desc">
+  <title id="title">ChatGPT Prism</title>
+  <desc id="desc">Neon green Prism mark on a dark background, with the title ChatGPT Prism and the tagline Startup animations for ChatGPT.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1" color-interpolation="linearRGB">
+      <stop offset="0" stop-color="#070b08"/>
+      <stop offset=".32" stop-color="#0b120d"/>
+      <stop offset=".68" stop-color="#101c13"/>
+      <stop offset="1" stop-color="#09110c"/>
+    </linearGradient>
+    <linearGradient id="mark" x1="0" y1="0" x2="1" y2="1" color-interpolation="linearRGB">
+      <stop offset="0" stop-color="#d4ffa6"/>
+      <stop offset=".28" stop-color="#baff83"/>
+      <stop offset=".65" stop-color="#76f66b"/>
+      <stop offset="1" stop-color="#48e98a"/>
+    </linearGradient>
+    <radialGradient id="halo" cx=".5" cy=".5" r=".5" color-interpolation="linearRGB">
+      <stop offset="0" stop-color="#75ff80" stop-opacity=".20"/>
+      <stop offset=".43" stop-color="#69fa73" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#69fa73" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="44" height="44" patternUnits="userSpaceOnUse">
+      <path d="M44 0H0V44" fill="none" stroke="#a4ff96" stroke-opacity=".055" stroke-width="1"/>
+    </pattern>
+    <clipPath id="frame">
+      <rect width="1280" height="400" rx="22"/>
+    </clipPath>
+    <filter id="glow" x="-35%" y="-35%" width="170%" height="170%" color-interpolation-filters="linearRGB">
+      <feGaussianBlur stdDeviation="9"/>
+    </filter>
+  </defs>
+  <g clip-path="url(#frame)">
+    <rect width="1280" height="400" fill="url(#background)"/>
+    <rect width="1280" height="400" fill="url(#grid)"/>
+    <ellipse cx="1010" cy="206" rx="315" ry="300" fill="url(#halo)"/>
+    <path d="M689 0v400M724 0v400" stroke="#baff83" stroke-opacity=".055"/>
+    <path d="M760 344c131-118 309-139 520-93M807 385c146-73 291-90 473-65M820 0c145 56 298 82 460 75" fill="none" stroke="#a8fa8b" stroke-opacity=".105" stroke-width="1.5"/>
+    <circle cx="1194" cy="56" r="3" fill="#bdff93" opacity=".58"/>
+    <circle cx="761" cy="77" r="2" fill="#bdff93" opacity=".34"/>
+    <circle cx="1232" cy="303" r="2" fill="#bdff93" opacity=".37"/>
+    <g transform="translate(847 56) scale(8.6)" fill="none" stroke-linejoin="round">
+      <path d="M18 3 33 28H3L18 3Z" stroke="#91ff71" stroke-width="3.2" opacity=".43" filter="url(#glow)"/>
+      <path d="m18 3 1 25M3 28l16-10 14 10m-14-10 7-1.75" stroke="#91ff71" stroke-width="2.5" opacity=".43" filter="url(#glow)"/>
+      <path d="M18 3 33 28H3L18 3Z" stroke="url(#mark)" stroke-width="1.9"/>
+      <path d="m18 3 1 25M3 28l16-10 14 10m-14-10 7-1.75" stroke="url(#mark)" stroke-width="1.35"/>
+    </g>
+    <path d="M72 64h35" stroke="#aafa85" stroke-width="3" stroke-linecap="round"/>
+    <text x="119" y="71" fill="#b6f3a0" font-family="Consolas, Menlo, monospace" font-size="15" letter-spacing="3">STARTUP ANIMATIONS</text>
+    <text x="67" y="188" fill="#f5fff2" font-family="Segoe UI, Arial, sans-serif" font-size="78" font-weight="700" letter-spacing="-3">ChatGPT</text>
+    <text x="67" y="276" fill="#baff83" font-family="Segoe UI, Arial, sans-serif" font-size="88" font-weight="700" letter-spacing="-3">Prism</text>
+    <text x="72" y="329" fill="#a9b9aa" font-family="Segoe UI, Arial, sans-serif" font-size="21">Give every launch a moment of its own.</text>
+    <path d="M72 355h293" stroke="#9fff82" stroke-opacity=".36"/>
+    <rect x="1" y="1" width="1278" height="398" rx="21" fill="none" stroke="#a4ff8f" stroke-opacity=".22" stroke-width="2"/>
+  </g>
+</svg>
