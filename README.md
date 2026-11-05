@@ -3,7 +3,7 @@
 ![](assets/banner.svg)
 
 <h4 align="center">
-    ChatGPT Prism 为 ChatGPT/Codex 桌面客户端配置启动动画，ChatGPT Prism 后台启动时持续 Hook 客户端新进程的冷启动窗口，支持库内不同启动动画切换、参数自定义、本地导入和社区市场
+    ChatGPT Prism 为 ChatGPT/Codex 桌面客户端配置启动动画，支持 Windows 和 Darwin。ChatGPT Prism 后台启动时持续 Hook 客户端新进程的冷启动窗口，支持库内不同启动动画切换、参数自定义、本地导入和社区市场
 </h4>
 
 <p align="center">
@@ -17,7 +17,8 @@
 
 ## 快速安装
 
-[https://github.com/tdragon6/ChatGPT-Prism/releases](https://github.com/tragon6/ChatGPT-Prism/releases)
+- [https://github.com/tdragon6/ChatGPT-Prism/releases](https://github.com/tragon6/ChatGPT-Prism/releases)
+- 包含 Windows 便携版和 Darwin 安装包（M 系芯片和 Intel 芯片均支持）
  
 ## 社区市场
 

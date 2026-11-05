@@ -3,7 +3,7 @@
 ![](assets/banner.svg)
 
 <h4 align="center">
-    ChatGPT Prism lets you configure startup animations for the ChatGPT/Codex desktop clients. While running in the background, it continuously hooks into the startup windows of newly launched client processes during cold starts. It supports switching between animations in the library, customizing parameters, importing local creations, and accessing the community marketplace
+    ChatGPT Prism lets you configure startup animations for the ChatGPT/Codex desktop clients, supporting Windows and Darwin. While running in the background, it continuously hooks into the startup windows of newly launched client processes during cold starts. It supports switching between animations in the library, customizing parameters, importing local creations, and accessing the community marketplace
 </h4>
 
 <p align="center">
@@ -17,7 +17,8 @@
 
 ## Quick Installation
 
-[https://github.com/tdragon6/ChatGPT-Prism/releases](https://github.com/tragon6/ChatGPT-Prism/releases)
+- [https://github.com/tdragon6/ChatGPT-Prism/releases](https://github.com/tragon6/ChatGPT-Prism/releases)
+- Includes Windows portable version and Darwin installation packages (M chips and Intel chips are supported)
  
 ## Community Marketplace
 
