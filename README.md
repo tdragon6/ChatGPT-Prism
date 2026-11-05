@@ -13,7 +13,7 @@
 
 ## 演示视频
 
-<video controls src="assets/video.mp4"></video>
+[<video controls src="assets/video.mp4"></video>](https://github.com/user-attachments/assets/49000cd9-c640-4e1f-83e3-390755a1cf97)
 
 ## 快速安装
 
