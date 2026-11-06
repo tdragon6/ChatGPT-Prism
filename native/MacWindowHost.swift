@@ -118,7 +118,7 @@ func subtract(_ source: CGRect, _ obstruction: CGRect) -> [CGRect] {
         }
         processes = nextProcesses
         if processes.isEmpty {
-            emitDestroyedWindows(except: [:])
+            emitWindowSnapshot(destroyedWindows(except: [:]))
             windows.removeAll()
             observedCGWindowBounds.removeAll()
             return
@@ -143,6 +143,7 @@ func subtract(_ source: CGRect, _ obstruction: CGRect) -> [CGRect] {
         var nextWindows: [String: [String: Any]] = [:]
         var nextCGWindowBounds: [String: CGRect] = [:]
         var foregroundChosen = Set<pid_t>()
+        var changes: [[String: Any]] = []
         for (index, info) in list.enumerated() {
             guard let number = info[kCGWindowNumber as String] as? UInt32,
                   let owner = info[kCGWindowOwnerPID as String] as? Int32,
@@ -198,15 +199,17 @@ func subtract(_ source: CGRect, _ obstruction: CGRect) -> [CGRect] {
             if previous == nil || !NSDictionary(dictionary: previous!).isEqual(to: event) {
                 var output = event
                 output["eventName"] = previous == nil ? "SHOW" : "LOCATIONCHANGE"
-                emit(output)
+                changes.append(output)
             }
         }
-        emitDestroyedWindows(except: nextWindows)
+        changes.append(contentsOf: destroyedWindows(except: nextWindows))
+        emitWindowSnapshot(changes)
         windows = nextWindows
         observedCGWindowBounds = nextCGWindowBounds
     }
 
-    static func emitDestroyedWindows(except present: [String: [String: Any]]) {
+    static func destroyedWindows(except present: [String: [String: Any]]) -> [[String: Any]] {
+        var changes: [[String: Any]] = []
         for (key, old) in windows where present[key] == nil {
             var event = old
             event["eventName"] = "DESTROY"
@@ -214,8 +217,16 @@ func subtract(_ source: CGRect, _ obstruction: CGRect) -> [CGRect] {
             event["focused"] = false
             event["overlayEligible"] = false
             event["clipRects"] = []
-            emit(event)
+            changes.append(event)
         }
+        return changes
+    }
+
+    static func emitWindowSnapshot(_ changes: [[String: Any]]) {
+        guard !changes.isEmpty else { return }
+        emit(["type": "WINDOW_SNAPSHOT_BEGIN"])
+        for event in changes { emit(event) }
+        emit(["type": "WINDOW_SNAPSHOT_END"])
     }
 }
 

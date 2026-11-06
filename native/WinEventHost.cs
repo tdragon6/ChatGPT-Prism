@@ -220,7 +220,7 @@ internal static class WinEventHost
         if (desktop == IntPtr.Zero) return false;
         CloseDesktop(desktop); return true;
     }
-    private static Snapshot Capture(IntPtr hwnd)
+    private static Snapshot Capture(IntPtr hwnd, IntPtr foreground)
     {
         Snapshot s = new Snapshot();
         s.WindowOk = GetWindowRect(hwnd, out s.Window);
@@ -234,7 +234,7 @@ internal static class WinEventHost
         s.Fullscreen = !s.Minimized && (s.FrameOk || s.WindowOk) && GetMonitorInfo(MonitorFromWindow(hwnd, 2), ref monitor)
             && Math.Abs(visibleFrame.Left - monitor.Monitor.Left) <= 2 && Math.Abs(visibleFrame.Top - monitor.Monitor.Top) <= 2
             && Math.Abs(visibleFrame.Right - monitor.Monitor.Right) <= 2 && Math.Abs(visibleFrame.Bottom - monitor.Monitor.Bottom) <= 2;
-        s.Foreground = GetAncestor(GetForegroundWindow(), 2) == hwnd;
+        s.Foreground = foreground == hwnd;
         s.Eligible = s.Visible && !s.Minimized && s.Cloaked == 0 && (s.FrameOk || s.WindowOk) && CanDecorateDesktop();
         if (s.Eligible) {
             List<Rect> regions = new List<Rect>(); regions.Add(visibleFrame);
@@ -257,12 +257,10 @@ internal static class WinEventHost
         }
         return s;
     }
-    private static void EmitWindow(string eventName, IntPtr hwnd, Identity id, bool baseline)
+    private static object WindowEvent(string eventName, IntPtr hwnd, Identity id, bool baseline, Snapshot s)
     {
-        Snapshot s = Capture(hwnd);
-        Previous[hwnd] = s;
         List<object> clips = new List<object>(); foreach (Rect r in s.Clips) clips.Add(Bounds(r));
-        Emit(new {
+        return new {
             type = "window", eventName = eventName, baseline = baseline,
             hwnd = "0x" + hwnd.ToInt64().ToString("X"),
             pid = id.Pid, executablePath = id.Path, processStartFileTime = id.StartFileTime, processStartedAt = id.StartedAt,
@@ -273,8 +271,7 @@ internal static class WinEventHost
             state = s.Minimized ? "minimized" : s.Fullscreen ? "fullscreen" : s.Maximized ? "maximized" : "normal",
             cloaked = s.Cloaked.GetValueOrDefault(1) != 0, foreground = s.Foreground, overlayEligible = s.Eligible,
             clipRects = clips
-        });
-        UpdateSnapshotInterval();
+        };
     }
     private static bool SameIdentity(Identity first, Identity second)
     {
@@ -318,7 +315,9 @@ internal static class WinEventHost
             if (!IsMainWindowCandidate(hwnd)) return true;
             Identity id = IdentifyWindow(hwnd); if (id == null) return true;
             TrackWindow(hwnd, id);
-            EmitWindow("BASELINE", hwnd, id, true);
+            Snapshot snapshot = Capture(hwnd, GetAncestor(GetForegroundWindow(), 2));
+            Previous[hwnd] = snapshot;
+            Emit(WindowEvent("BASELINE", hwnd, id, true, snapshot));
         }
         catch { Emit(new { type = "error", code = "window_baseline_failed" }); }
         return true;
@@ -329,23 +328,9 @@ internal static class WinEventHost
         {
             if (evt == EVENT_SYSTEM_FOREGROUND) { RequestSnapshot(); return; }
             if (hwnd == IntPtr.Zero || objectId != 0 || childId != 0 || !IsWindowMetadataEvent(evt)) return;
-            Identity id;
-            if (evt == EVENT_OBJECT_DESTROY && Known.TryGetValue(hwnd, out id)) {
-                EmitWindow("DESTROY", hwnd, id, false);
-                Known.Remove(hwnd); Previous.Remove(hwnd); RequestSnapshot(); return;
-            }
+            if (Known.ContainsKey(hwnd)) { RequestSnapshot(); return; }
             if (GetAncestor(hwnd, 2) != hwnd) return;
-            if (!IsMainWindowCandidate(hwnd)) { RequestSnapshot(); return; }
-            id = IdentifyWindow(hwnd);
-            if (id == null) {
-                if (Known.Remove(hwnd)) Previous.Remove(hwnd);
-                RequestSnapshot();
-                return;
-            }
-            TrackWindow(hwnd, id);
-            string name = evt == EVENT_OBJECT_CREATE ? "CREATE" : evt == EVENT_OBJECT_SHOW ? "SHOW" :
-                evt == EVENT_OBJECT_HIDE ? "HIDE" : evt == EVENT_OBJECT_STATECHANGE ? "STATE" : "LOCATIONCHANGE";
-            EmitWindow(name, hwnd, id, false);
+            if (!IsMainWindowCandidate(hwnd) || IdentifyWindow(hwnd) != null) RequestSnapshot();
         }
         catch { Emit(new { type = "error", code = "window_event_failed" }); }
     }
@@ -357,14 +342,18 @@ internal static class WinEventHost
     private static void SnapshotWindows()
     {
         HashSet<IntPtr> observed = new HashSet<IntPtr>();
-        EnumWindows(delegate(IntPtr hwnd, IntPtr ignored) {
+        List<object> changes = new List<object>();
+        IntPtr foreground = GetAncestor(GetForegroundWindow(), 2);
+        bool enumerated = EnumWindows(delegate(IntPtr hwnd, IntPtr ignored) {
             try {
                 if (!IsMainWindowCandidate(hwnd)) return true;
                 Identity id = IdentifyWindow(hwnd); if (id == null) return true;
                 observed.Add(hwnd);
-                Snapshot next = Capture(hwnd), previous;
+                Snapshot next = Capture(hwnd, foreground), previous;
                 Identity oldIdentity;
                 bool existed = Known.TryGetValue(hwnd, out oldIdentity) && oldIdentity.Pid == id.Pid && oldIdentity.StartFileTime == id.StartFileTime;
+                if (!existed && oldIdentity != null)
+                    changes.Add(WindowEvent("DESTROY", hwnd, oldIdentity, false, new Snapshot()));
                 TrackWindow(hwnd, id);
                 if (!existed || !Previous.TryGetValue(hwnd, out previous) || previous.Signature != next.Signature) {
                     string name = "STATE";
@@ -377,16 +366,24 @@ internal static class WinEventHost
                                 name = "LOCATIONCHANGE";
                         }
                     } else if (next.Visible) name = "SHOW";
-                    EmitWindow(name, hwnd, id, false);
+                    Previous[hwnd] = next;
+                    changes.Add(WindowEvent(name, hwnd, id, false, next));
                 }
             } catch { Emit(new { type = "error", code = "window_snapshot_failed" }); }
             return true;
         }, IntPtr.Zero);
-        List<IntPtr> removed = new List<IntPtr>();
-        foreach (KeyValuePair<IntPtr, Identity> pair in Known) if (!observed.Contains(pair.Key)) removed.Add(pair.Key);
-        foreach (IntPtr hwnd in removed) {
-            EmitWindow("DESTROY", hwnd, Known[hwnd], false);
-            Known.Remove(hwnd); Previous.Remove(hwnd);
+        if (enumerated) {
+            List<IntPtr> removed = new List<IntPtr>();
+            foreach (KeyValuePair<IntPtr, Identity> pair in Known) if (!observed.Contains(pair.Key)) removed.Add(pair.Key);
+            foreach (IntPtr hwnd in removed) {
+                changes.Add(WindowEvent("DESTROY", hwnd, Known[hwnd], false, new Snapshot()));
+                Known.Remove(hwnd); Previous.Remove(hwnd);
+            }
+        }
+        if (changes.Count > 0) {
+            Emit(new { type = "WINDOW_SNAPSHOT_BEGIN" });
+            foreach (object change in changes) Emit(change);
+            Emit(new { type = "WINDOW_SNAPSHOT_END" });
         }
         PruneProcessCache(false);
         UpdateSnapshotInterval();

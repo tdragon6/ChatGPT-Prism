@@ -1,8 +1,11 @@
 use crate::{Host, settings::Settings, works};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
+use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
+
+const WINDOW_GRACE: Duration = Duration::from_millis(1200);
 
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Bounds {
@@ -19,6 +22,10 @@ impl Bounds {
             && self.x.abs_diff(0) < 100_000
             && self.y.abs_diff(0) < 100_000
     }
+
+    fn similar_size(self, previous: Self) -> bool {
+        self.width * 4 >= previous.width * 3 && self.height * 4 >= previous.height * 3
+    }
 }
 
 #[derive(Clone, PartialEq)]
@@ -29,10 +36,66 @@ pub struct Geometry {
     pub presentable: bool,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Target {
     pub process: String,
     pub window: String,
+}
+
+pub struct WindowState {
+    pub geometry: Option<Geometry>,
+    pub preferred: bool,
+    pub z_order: usize,
+}
+
+#[derive(Clone)]
+struct Session {
+    target: Target,
+    geometry: Geometry,
+    handoff_until: Instant,
+    unavailable_until: Option<Instant>,
+}
+
+impl Session {
+    fn update(&mut self, windows: &HashMap<Target, WindowState>, now: Instant) {
+        let current = windows
+            .get(&self.target)
+            .and_then(|window| window.geometry.as_ref());
+        if now < self.handoff_until {
+            let replacement = windows
+                .iter()
+                .filter(|(target, window)| {
+                    target.process == self.target.process
+                        && **target != self.target
+                        && window.preferred
+                })
+                .filter_map(|(target, window)| {
+                    let geometry = window.geometry.as_ref()?;
+                    (geometry.presentable
+                        && geometry.frontmost
+                        && geometry.bounds.similar_size(self.geometry.bounds))
+                    .then_some((target, geometry, window.z_order))
+                })
+                .min_by_key(|(_, _, order)| *order);
+            if let Some((target, geometry, _)) = replacement {
+                self.target.clone_from(target);
+                self.geometry.clone_from(geometry);
+                self.unavailable_until = None;
+                return;
+            }
+        }
+
+        if let Some(geometry) = current {
+            self.geometry.clone_from(geometry);
+            if geometry.presentable || cfg!(target_os = "macos") {
+                self.unavailable_until = None;
+                return;
+            }
+        }
+        self.geometry.presentable = false;
+        self.geometry.clips.clear();
+        self.unavailable_until.get_or_insert(now + WINDOW_GRACE);
+    }
 }
 
 #[derive(Clone, Serialize)]
@@ -52,23 +115,27 @@ pub struct Scene {
     ready: bool,
     shown: Option<Instant>,
     created: Instant,
-    target: Option<(Target, Geometry)>,
+    session: Option<Session>,
 }
 
 pub fn exists(app: &AppHandle) -> bool {
     app.state::<Host>().scene.lock().unwrap().is_some()
 }
 
-pub fn open(
+pub fn open(app: &AppHandle, settings: &Settings, theme: &str) -> Result<(), String> {
+    create_scene(app, settings, theme, None).map(|_| ())
+}
+
+fn create_scene(
     app: &AppHandle,
     settings: &Settings,
     theme: &str,
-    target: Option<(Target, Geometry)>,
-) -> Result<(), String> {
+    session: Option<Session>,
+) -> Result<bool, String> {
     let state = app.state::<Host>();
     let _guard = state.player_operation.lock().unwrap();
     if state.scene.lock().unwrap().is_some() {
-        return Ok(());
+        return Ok(false);
     }
     let payload = works::prepare(
         &state.data_dir,
@@ -95,13 +162,13 @@ pub fn open(
             context,
             playing: false,
             clipped: cfg!(target_os = "macos"),
-            clip_rects: target
+            clip_rects: session
                 .as_ref()
-                .map(|(_, geometry)| geometry.clips.clone())
+                .map(|session| session.geometry.clips.clone())
                 .unwrap_or_default(),
         },
         themes,
-        target,
+        session,
         ready: false,
         shown: None,
         created: Instant::now(),
@@ -132,7 +199,11 @@ pub fn open(
         }
     };
     register_owned_window(app, &window);
-    present(app, &label)
+    if let Err(error) = present(app, &label) {
+        close(app, Some(&label));
+        return Err(error);
+    }
+    Ok(true)
 }
 
 fn register_owned_window(app: &AppHandle, window: &WebviewWindow) {
@@ -227,43 +298,46 @@ fn place(window: &WebviewWindow, bounds: Bounds) -> tauri::Result<()> {
 }
 
 fn present(app: &AppHandle, label: &str) -> Result<(), String> {
-    let state = app.state::<Host>();
-    let (target, geometry) = {
-        let mut scene = state.scene.lock().unwrap();
-        let Some(scene) = scene.as_mut().filter(|scene| {
-            scene.label == label
-                && scene.ready
-                && scene.shown.is_none()
-                && scene
-                    .target
-                    .as_ref()
-                    .is_some_and(|(_, geometry)| geometry.presentable)
-        }) else {
-            return Ok(());
-        };
-        scene.shown = Some(Instant::now());
-        scene.target.clone().unwrap()
-    };
-    let Some(window) = app.get_webview_window(label) else {
-        close(app, Some(label));
-        return Ok(());
-    };
-    let result = (|| -> tauri::Result<()> {
-        apply_geometry(app, &window, &target, &geometry)?;
-        {
-            let mut scene = state.scene.lock().unwrap();
-            if let Some(scene) = scene.as_mut().filter(|scene| scene.label == label) {
+    let handle = app.clone();
+    let label = label.to_owned();
+    app.run_on_main_thread(move || {
+        let state = handle.state::<Host>();
+        let (target, geometry, starting) = {
+            let mut current = state.scene.lock().unwrap();
+            let Some(scene) = current
+                .as_mut()
+                .filter(|scene| scene.label == label && scene.ready)
+            else {
+                return;
+            };
+            let Some(session) = &scene.session else {
+                return;
+            };
+            let starting = scene.shown.is_none();
+            if starting {
+                if !session.geometry.presentable {
+                    return;
+                }
+                scene.shown = Some(Instant::now());
                 scene.packet.playing = true;
             }
+            (session.target.clone(), session.geometry.clone(), starting)
+        };
+        let Some(window) = handle.get_webview_window(&label) else {
+            close(&handle, Some(&label));
+            return;
+        };
+        let result = apply_geometry(&handle, &window, &target, &geometry).and_then(|()| {
+            if starting {
+                handle.emit_to(label.as_str(), "prism-present", ())?;
+            }
+            Ok(())
+        });
+        if result.is_err() {
+            close(&handle, Some(&label));
         }
-        app.emit_to(label, "prism-present", ())?;
-        Ok(())
-    })();
-    if let Err(error) = result {
-        close(app, Some(label));
-        return Err(error.to_string());
-    }
-    Ok(())
+    })
+    .map_err(|error| error.to_string())
 }
 
 pub fn play_target(
@@ -272,24 +346,36 @@ pub fn play_target(
     theme: &str,
     target: Target,
     geometry: Geometry,
-) -> Result<(), String> {
+    handoff_until: Instant,
+) -> Result<bool, String> {
     let state = app.state::<Host>();
+    let session = Session {
+        target,
+        geometry,
+        handoff_until,
+        unavailable_until: None,
+    };
     let label = {
         let mut current = state.scene.lock().unwrap();
         match current.as_mut() {
-            Some(scene) if scene.target.is_none() => {
-                scene.packet.clip_rects = geometry.clips.clone();
-                scene.target = Some((target.clone(), geometry.clone()));
+            Some(scene) if scene.session.is_none() => {
+                scene.packet.clip_rects.clone_from(&session.geometry.clips);
+                scene.session = Some(session.clone());
+                scene.created = Instant::now();
                 Some(scene.label.clone())
             }
-            Some(_) => return Ok(()),
+            Some(_) => return Ok(false),
             None => None,
         }
     };
     if let Some(label) = label {
-        present(app, &label)
+        if let Err(error) = present(app, &label) {
+            close(app, Some(&label));
+            return Err(error);
+        }
+        Ok(true)
     } else {
-        open(app, settings, theme, Some((target, geometry)))
+        create_scene(app, settings, theme, Some(session))
     }
 }
 
@@ -313,69 +399,52 @@ fn apply_geometry(
             "clipped": true
         }),
     )?;
+    #[cfg(windows)]
     if !window.is_visible()? {
         window.show()?;
     }
     #[cfg(target_os = "macos")]
     {
-        let handle = window.clone();
-        let relative = target.window.parse::<isize>().unwrap_or_default();
-        let frontmost = geometry.frontmost;
-        app.run_on_main_thread(move || {
-            if let Ok(pointer) = handle.ns_window() {
-                use objc2_app_kit::{NSWindow, NSWindowOrderingMode};
-                let native = unsafe { &*pointer.cast::<NSWindow>() };
-                native.setIgnoresMouseEvents(!frontmost);
-                if frontmost {
-                    native.setLevel(1000);
-                } else {
-                    native.setLevel(0);
-                    if relative > 0 {
-                        native.orderWindow_relativeTo(NSWindowOrderingMode::Above, relative);
-                    }
-                }
-            }
-        })?;
+        use objc2_app_kit::{NSWindow, NSWindowOrderingMode};
+        let pointer = window.ns_window()?;
+        let native = unsafe { &*pointer.cast::<NSWindow>() };
+        native.setIgnoresMouseEvents(!geometry.frontmost);
+        if geometry.frontmost {
+            native.setLevel(1000);
+            native.orderFrontRegardless();
+        } else if let Some(relative) = target.window.parse::<isize>().ok().filter(|id| *id > 0) {
+            native.setLevel(0);
+            native.orderWindow_relativeTo(NSWindowOrderingMode::Above, relative);
+        } else {
+            window.hide()?;
+        }
     }
     #[cfg(windows)]
     let _ = (app, target);
     Ok(())
 }
 
-pub fn update_target(app: &AppHandle, target: &Target, geometry: Option<Geometry>) -> bool {
+pub fn update_target(app: &AppHandle, windows: &HashMap<Target, WindowState>) {
     let state = app.state::<Host>();
-    let (label, shown, changed) = {
+    let label = {
         let mut current = state.scene.lock().unwrap();
         let Some(scene) = current.as_mut() else {
-            return false;
+            return;
         };
-        let Some((_, previous)) = scene.target.as_mut().filter(|(key, _)| key == target) else {
-            return false;
+        let Some(session) = scene.session.as_mut() else {
+            return;
         };
-        let changed = geometry
-            .as_ref()
-            .is_some_and(|geometry| geometry != previous);
-        if let Some(geometry) = &geometry {
-            scene.packet.clip_rects = geometry.clips.clone();
-            *previous = geometry.clone();
+        let previous = session.clone();
+        session.update(windows, Instant::now());
+        if session.target == previous.target && session.geometry == previous.geometry {
+            return;
         }
-        (scene.label.clone(), scene.shown.is_some(), changed)
+        scene.packet.clip_rects.clone_from(&session.geometry.clips);
+        scene.label.clone()
     };
-    match geometry {
-        None => close(app, Some(&label)),
-        Some(geometry) if shown && changed => {
-            if let Some(window) = app.get_webview_window(&label) {
-                if apply_geometry(app, &window, target, &geometry).is_err() {
-                    close(app, Some(&label));
-                }
-            }
-        }
-        Some(_) if !shown => {
-            let _ = present(app, &label);
-        }
-        _ => {}
+    if present(app, &label).is_err() {
+        close(app, Some(&label));
     }
-    true
 }
 
 pub fn close_process(app: &AppHandle, process: &str) {
@@ -387,9 +456,9 @@ pub fn close_process(app: &AppHandle, process: &str) {
         .as_ref()
         .filter(|scene| {
             scene
-                .target
+                .session
                 .as_ref()
-                .is_some_and(|(target, _)| target.process == process)
+                .is_some_and(|session| session.target.process == process)
         })
         .map(|scene| scene.label.clone());
     if let Some(label) = label {
@@ -434,7 +503,12 @@ pub fn expire(app: &AppHandle) {
         .unwrap()
         .as_ref()
         .filter(|scene| {
-            (!scene.ready && scene.created.elapsed() > Duration::from_secs(10))
+            scene.session.as_ref().is_some_and(|session| {
+                session
+                    .unavailable_until
+                    .is_some_and(|deadline| Instant::now() >= deadline)
+            }) || ((!scene.ready || (scene.session.is_some() && scene.shown.is_none()))
+                && scene.created.elapsed() > Duration::from_secs(10))
                 || scene
                     .shown
                     .is_some_and(|time| time.elapsed() > Duration::from_secs(45))
@@ -442,5 +516,102 @@ pub fn expire(app: &AppHandle) {
         .map(|scene| scene.label.clone());
     if let Some(label) = label {
         close(app, Some(&label));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn window(id: &str, width: i32, preferred: bool) -> (Target, WindowState) {
+        let bounds = Bounds {
+            x: 50,
+            y: 50,
+            width,
+            height: 600,
+        };
+        (
+            Target {
+                process: "123:start".into(),
+                window: id.into(),
+            },
+            WindowState {
+                geometry: Some(Geometry {
+                    bounds,
+                    clips: vec![Bounds {
+                        x: 0,
+                        y: 0,
+                        ..bounds
+                    }],
+                    frontmost: true,
+                    presentable: true,
+                }),
+                preferred,
+                z_order: usize::from(!preferred),
+            },
+        )
+    }
+
+    fn session(now: Instant) -> Session {
+        let (target, window) = window("old", 800, true);
+        Session {
+            target,
+            geometry: window.geometry.unwrap(),
+            handoff_until: now + Duration::from_secs(15),
+            unavailable_until: None,
+        }
+    }
+
+    #[test]
+    fn foreground_replacement_takes_over_while_original_is_open() {
+        let now = Instant::now();
+        let mut session = session(now);
+        let (replacement, mut state) = window("new", 700, true);
+        state.geometry.as_mut().unwrap().bounds.x = 400;
+        let windows = HashMap::from([window("old", 800, false), (replacement, state)]);
+        session.update(&windows, now);
+        assert_eq!(session.target.window, "new");
+        assert_eq!(session.geometry.bounds.width, 700);
+        assert!(session.unavailable_until.is_none());
+    }
+
+    #[test]
+    fn replacement_resumes_after_gap() {
+        let now = Instant::now();
+        let mut session = session(now);
+        session.update(&HashMap::new(), now);
+        assert!(!session.geometry.presentable);
+        assert_eq!(session.unavailable_until, Some(now + WINDOW_GRACE));
+
+        let windows = HashMap::from([window("new", 800, true)]);
+        session.update(&windows, now + Duration::from_millis(200));
+        assert_eq!(session.target.window, "new");
+        assert!(session.geometry.presentable);
+        assert!(session.unavailable_until.is_none());
+    }
+
+    #[test]
+    fn popup_does_not_replace_existing_main_window() {
+        let now = Instant::now();
+        let mut session = session(now);
+        let windows = HashMap::from([window("old", 800, false), window("popup", 300, true)]);
+        session.update(&windows, now);
+        assert_eq!(session.target.window, "old");
+    }
+
+    #[test]
+    fn handoff_requires_same_process_instance_within_startup_period() {
+        let now = Instant::now();
+        let mut session = session(now);
+        let (mut other, window_state) = window("new", 800, true);
+        other.process = "123:later-start".into();
+        session.update(&HashMap::from([(other, window_state)]), now);
+        assert_eq!(session.target.window, "old");
+        assert!(!session.geometry.presentable);
+
+        let windows = HashMap::from([window("new", 800, true)]);
+        session.update(&windows, session.handoff_until);
+        assert_eq!(session.target.window, "old");
+        assert!(!session.geometry.presentable);
     }
 }

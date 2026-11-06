@@ -1,7 +1,7 @@
 use crate::{
     Host,
     platform::{self, Client},
-    playback::{self, Bounds, Geometry, Target},
+    playback::{self, Bounds, Geometry, Target, WindowState},
     settings::Settings,
 };
 use serde::{Deserialize, Serialize};
@@ -17,6 +17,7 @@ use std::{
 use tauri::{AppHandle, Emitter, Manager, Theme};
 
 const HELPER: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/window-host"));
+const STARTUP_WINDOW: Duration = Duration::from_secs(15);
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -172,6 +173,10 @@ struct WindowEvent {
     #[serde(default)]
     frontmost: bool,
     #[serde(default)]
+    focused: bool,
+    #[serde(default)]
+    z_order: usize,
+    #[serde(default)]
     overlay_eligible: bool,
     #[serde(default)]
     clip_rects: Vec<Bounds>,
@@ -211,14 +216,13 @@ impl WindowEvent {
         let full = self.clip_rects.iter().any(|clip| {
             clip.x <= 0 && clip.y <= 0 && clip.width >= bounds.width && clip.height >= bounds.height
         });
-        if cfg!(windows) && !(self.overlay_eligible && frontmost && full) {
-            return None;
-        }
         Some(Geometry {
             bounds,
             clips: self.clip_rects.clone(),
             frontmost,
-            presentable: self.overlay_eligible && !self.clip_rects.is_empty(),
+            presentable: self.overlay_eligible
+                && !self.clip_rects.is_empty()
+                && (!cfg!(windows) || (frontmost && full)),
         })
     }
 }
@@ -238,7 +242,8 @@ struct Monitor {
     // A process can trigger only once. Baseline processes never trigger.
     seen: HashMap<String, Option<Instant>>,
     processes: HashSet<String>,
-    windows: HashMap<String, String>,
+    windows: HashMap<Target, WindowState>,
+    in_snapshot: bool,
 }
 
 impl Monitor {
@@ -259,6 +264,7 @@ impl Monitor {
             seen: HashMap::new(),
             processes: HashSet::new(),
             windows: HashMap::new(),
+            in_snapshot: false,
         }
     }
 
@@ -282,6 +288,7 @@ impl Monitor {
         self.seen.clear();
         self.processes.clear();
         self.windows.clear();
+        self.in_snapshot = false;
         self.owned = None;
         self.connect_at = Instant::now() + Duration::from_secs(8);
         self.publish(app);
@@ -358,6 +365,16 @@ impl Monitor {
             }
             return;
         }
+        if kind == "WINDOW_SNAPSHOT_BEGIN" {
+            self.in_snapshot = true;
+            return;
+        }
+        if kind == "WINDOW_SNAPSHOT_END" {
+            if std::mem::take(&mut self.in_snapshot) {
+                self.update_windows(app);
+            }
+            return;
+        }
         if !matches!(kind, "process" | "window") {
             return;
         }
@@ -372,7 +389,7 @@ impl Monitor {
         if event.event_name == "EXIT" {
             self.processes.remove(&process);
             self.seen.remove(&process);
-            self.windows.retain(|_, owner| owner != &process);
+            self.windows.retain(|target, _| target.process != process);
             playback::close_process(app, &process);
         } else if is_process {
             self.processes.insert(process.clone());
@@ -390,39 +407,76 @@ impl Monitor {
             }
             let target = Target {
                 process: process.clone(),
-                window: id.clone(),
+                window: id,
             };
-            let destroying = event.event_name == "DESTROY";
-            let geometry = if destroying { None } else { event.geometry() };
-            if destroying {
-                self.windows.remove(&id);
+            if event.event_name == "DESTROY" {
+                self.windows.remove(&target);
             } else {
-                self.windows.insert(id, process.clone());
-            }
-            let eligible = self
-                .seen
-                .entry(process)
-                .or_insert_with(|| (!baseline).then(Instant::now));
-            if !playback::update_target(app, &target, geometry.clone())
-                && self.settings.enabled
-                && let Some(geometry) = geometry.filter(|geometry| geometry.presentable)
-                && eligible.is_some_and(|start| start.elapsed() <= Duration::from_secs(15))
-            {
-                *eligible = None;
-                if let Err(error) = playback::play_target(
-                    app,
-                    &self.settings,
-                    &self.runtime.theme,
+                self.seen
+                    .entry(process)
+                    .or_insert_with(|| (!baseline).then(Instant::now));
+                self.windows.insert(
                     target,
-                    geometry,
-                ) {
-                    self.runtime.error = Some(error);
-                }
+                    WindowState {
+                        geometry: event.geometry(),
+                        preferred: if cfg!(windows) {
+                            event.foreground
+                        } else {
+                            event.focused
+                        },
+                        z_order: event.z_order,
+                    },
+                );
             }
         }
+        if !self.in_snapshot {
+            self.update_windows(app);
+        }
+    }
+
+    fn update_windows(&mut self, app: &AppHandle) {
+        playback::expire(app);
+        playback::update_target(app, &self.windows);
+        self.start_playback(app);
         self.runtime.running =
             !self.windows.is_empty() || (!cfg!(windows) && !self.processes.is_empty());
         self.publish(app);
+    }
+
+    fn start_playback(&mut self, app: &AppHandle) {
+        if !self.settings.enabled {
+            return;
+        }
+        let now = Instant::now();
+        let candidate = self
+            .windows
+            .iter()
+            .filter_map(|(target, window)| {
+                let deadline = (*self.seen.get(&target.process)?)? + STARTUP_WINDOW;
+                let geometry = window.geometry.as_ref()?;
+                (now < deadline && geometry.presentable)
+                    .then_some((target, window, geometry, deadline))
+            })
+            .min_by_key(|(target, window, _, deadline)| {
+                (!window.preferred, window.z_order, *deadline, &target.window)
+            });
+        let Some((target, _, geometry, deadline)) = candidate else {
+            return;
+        };
+        let result = playback::play_target(
+            app,
+            &self.settings,
+            &self.runtime.theme,
+            target.clone(),
+            geometry.clone(),
+            deadline,
+        );
+        if !matches!(result, Ok(false)) {
+            self.seen.insert(target.process.clone(), None);
+        }
+        if let Err(error) = result {
+            self.runtime.error = Some(error);
+        }
     }
 
     fn settings_changed(&mut self, app: &AppHandle) {
@@ -475,19 +529,21 @@ impl Monitor {
             self.update_theme_at = now + Duration::from_secs(1);
         }
         playback::expire(app);
+        self.start_playback(app);
+        self.publish(app);
         if self.runtime.connected
             && self.settings.enabled
             && !playback::exists(app)
             && self.last_warm.elapsed() >= Duration::from_secs(2)
         {
-            let _ = playback::open(app, &self.settings, &self.runtime.theme, None);
+            let _ = playback::open(app, &self.settings, &self.runtime.theme);
             self.last_warm = Instant::now();
         }
         if self.seen.len() > 4096 {
             self.seen.retain(|process, eligible| {
-                eligible.is_some_and(|start| start.elapsed() < Duration::from_secs(15))
+                eligible.is_some_and(|start| start.elapsed() < STARTUP_WINDOW)
                     || self.processes.contains(process)
-                    || self.windows.values().any(|owner| owner == process)
+                    || self.windows.keys().any(|target| &target.process == process)
             });
         }
     }
@@ -530,7 +586,7 @@ pub fn run(app: AppHandle, receiver: Receiver<Message>, sender: Sender<Message>)
             }
             _ => {}
         }
-        if Instant::now() >= tick_at {
+        if !monitor.in_snapshot && Instant::now() >= tick_at {
             monitor.tick(&app, &sender);
             tick_at = Instant::now() + Duration::from_millis(150);
         }
